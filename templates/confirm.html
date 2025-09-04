@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Xác nhận lựa chọn</title>
+  <style>
+    body { font-family:sans-serif; margin:24px; color:#e5e7eb; background:#0f172a }
+    .box { border:1px solid rgba(255,255,255,.12); padding:16px; border-radius:12px; background:rgba(255,255,255,.04) }
+    img { width: 640px; height: 360px; object-fit: cover; display:block; margin-bottom:8px; border-radius:10px }
+    .meta { margin:8px 0; }
+    .btn { border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:600 }
+    .btn-primary { background:linear-gradient(135deg,#22d3ee,#a78bfa); color:#0b1120 }
+    .btn-ghost { background:transparent; color:#e5e7eb; border:1px solid rgba(255,255,255,.16) }
+  </style>
+</head>
+<body>
+  <h2>Bạn có thật sự muốn chọn ảnh này?</h2>
+
+  <div class="box">
+    <img src="{{ url_for('get_img', fpath=payload.rel_path) }}" alt="chosen">
+    <div class="meta">
+      <b>Keyframe:</b> {{payload.rel_path}}<br/>
+      <b>Video:</b> {{payload.video}}<br/>
+      <b>Frame:</b> {{payload.frame}}<br/>
+      <b>Truy vấn:</b> {{payload.textquery}}<br/>
+      <b>Loại:</b> {{payload.query_type}}
+      {% if payload.query_type == 'QA' %}
+        <div><b>Answer:</b> {{payload.answer}}</div>
+      {% endif %}
+    </div>
+
+    {# Nếu bạn đã tích hợp module gợi ý Q&A, block này sẽ hiện tự động #}
+    {% if payload.qa_suggest %}
+      <div class="meta" style="margin-top:10px">
+        <b>Gợi ý Q&A:</b>
+        <div style="margin-top:6px; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:10px">
+          {% if payload.qa_suggest.error %}
+            <div style="color:#fda4af">Lỗi: {{payload.qa_suggest.error}}</div>
+          {% else %}
+            {% if payload.qa_suggest.ocr %}<div><b>OCR:</b> {{payload.qa_suggest.ocr}}</div>{% endif %}
+            {% if payload.qa_suggest.count %}<div><b>Đếm:</b> {{payload.qa_suggest.count}}</div>{% endif %}
+            {% if payload.qa_suggest.caption %}<div><b>Caption:</b> {{payload.qa_suggest.caption}}</div>{% endif %}
+            {% if payload.qa_suggest.hints and payload.qa_suggest.hints|length>0 %}
+              <div><b>Hints:</b> {{payload.qa_suggest.hints|join(', ')}}</div>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('finalize_select') }}" style="display:inline;">
+      <input type="hidden" name="img_id" value="{{payload.img_id}}">
+      <input type="hidden" name="video" value="{{payload.video}}">
+      <input type="hidden" name="frame" value="{{payload.frame}}">
+      <input type="hidden" name="query_type" value="{{payload.query_type}}">
+      <input type="hidden" name="answer" value="{{payload.answer}}">
+      <input type="hidden" name="textquery" value="{{payload.textquery}}">
+      <button class="btn btn-primary" type="submit">Đúng, chọn ảnh này</button>
+    </form>
+
+    <a href="{{ url_for('home') }}"><button class="btn btn-ghost">Không, quay lại</button></a>
+  </div>
+</body>
+</html>

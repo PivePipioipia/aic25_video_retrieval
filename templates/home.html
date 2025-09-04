@@ -1,0 +1,402 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AIO-IR system · AIC 2025</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- jQuery + Icons -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#111827cc; --card:#0b1224cc; --text:#e5e7eb; --muted:#9ca3af;
+      --primary:#22d3ee; --accent:#a78bfa; --ok:#34d399; --danger:#fb7185;
+      --ring: 0 0 0 2px rgba(34,211,238,.35), 0 0 0 8px rgba(167,139,250,.15);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:
+      radial-gradient(1200px 600px at 20% -10%, #1f2a44 0%, transparent 50%),
+      radial-gradient(1200px 600px at 120% 20%, #1a2036 0%, transparent 40%), var(--bg);
+      color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif}
+    a{color:var(--primary); text-decoration:none}
+    .shell{max-width:1200px; margin:24px auto; padding:0 16px}
+    .brand{display:flex; align-items:center; gap:12px; margin-bottom:16px}
+    .brand i{color:var(--primary)}
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+           border:1px solid rgba(255,255,255,.08); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.35); backdrop-filter: blur(8px)}
+    .flash{margin:8px 0; padding:10px 12px; background:rgba(253,230,138,.08); border:1px solid rgba(253,230,138,.3); border-radius:10px}
+
+    /* SEARCH BAR */
+    .searchbar{display:grid; grid-template-columns: 1fr 420px; gap:16px; padding:16px}
+    .search-left{position:relative}
+    .search-left textarea{width:100%; min-height:110px; resize:vertical;
+      background:rgba(255,255,255,.06); color:#fff; border:1px solid rgba(255,255,255,.14);
+      border-radius:12px; padding:12px 44px; font-size:16px; outline:none}
+    .search-left .icon{position:absolute; left:16px; top:16px; color:var(--muted)}
+    .search-right{display:flex; flex-direction:column; gap:12px}
+    .row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+    .radio{display:flex; gap:10px; align-items:center}
+    .radio label{padding:8px 12px; border:1px solid rgba(255,255,255,.12); border-radius:10px; cursor:pointer}
+    .radio input{margin-right:6px}
+    .k-field input[type="number"]{width:90px; height:40px; border-radius:10px; border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.06); color:#fff; padding-left:10px; font-size:14px}
+
+    .btn{position:relative; border:none; border-radius:12px; color:#0b1120; font-weight:600; cursor:pointer;
+      padding:10px 16px; transition:transform .06s ease, box-shadow .06s ease}
+    .btn:active{transform:translateY(1px)}
+    .btn-primary{background:linear-gradient(135deg, var(--primary), var(--accent));
+      box-shadow:0 10px 25px rgba(34,211,238,.25), 0 2px 8px rgba(167,139,250,.15)}
+    .btn-outline{background:transparent; color:#e2e8f0; border:1px solid rgba(255,255,255,.16)}
+    .btn[disabled]{opacity:.55; cursor:not-allowed; filter:saturate(.6)}
+    .btn .spin{display:none; margin-left:8px; width:14px; height:14px; border:2px solid rgba(255,255,255,.55); border-top-color:transparent; border-radius:50%; animation:sp .8s linear infinite}
+    @keyframes sp{to{transform:rotate(360deg)}}
+
+    /* Sketch */
+    #sketch_panel{display:none; padding:16px}
+    #sketch{border:1px dashed rgba(255,255,255,.25); border-radius:10px; background:rgba(0,0,0,.2)}
+    .swatch{width:28px;height:28px;border-radius:6px;border:1px solid #cbd5e1;cursor:pointer;display:inline-block}
+
+    /* Grid ảnh */
+    .grid{display:grid; gap:14px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          padding:16px; animation:fadeUp .35s ease}
+    @keyframes fadeUp{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+    .card{position:relative; border-radius:14px; overflow:hidden; background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08); transition: transform .12s ease, box-shadow .12s ease}
+    .card:hover{transform:translateY(-2px); box-shadow:0 12px 30px rgba(0,0,0,.35)}
+    .thumb{width:100%; aspect-ratio:16/9; background:#0b1224}
+    .thumb img{width:100%; height:100%; object-fit:cover; display:block; filter:contrast(1.05) saturate(1.04)}
+    .overlay{position:absolute; inset:0; background:linear-gradient(180deg, transparent, rgba(0,0,0,.45) 60%, rgba(0,0,0,.65));
+      opacity:0; transition:opacity .18s ease}
+    .card:hover .overlay{opacity:1}
+    .card-actions{position:absolute; bottom:10px; left:10px; right:10px; display:flex; gap:8px}
+    .chip{background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.14); padding:6px 10px; border-radius:10px; font-size:12px}
+
+    /* Table */
+    table{width:100%; border-collapse:collapse; margin-top:12px}
+    th, td{border:1px solid rgba(255,255,255,.12); padding:10px; text-align:left}
+    thead th{background:rgba(255,255,255,.06)}
+    tbody tr{background:rgba(255,255,255,.02)}
+    .drag-handle{cursor:grab; color:#94a3b8}
+    .actions{display:flex; gap:8px; align-items:center; justify-content:flex-start}
+    .icon-btn{background:transparent; color:#e2e8f0; border:1px solid rgba(255,255,255,.16); border-radius:10px; padding:6px 10px; cursor:pointer}
+    .icon-btn.danger{border-color: rgba(251,113,133,.35); color:#fecdd3}
+
+    :focus-visible{outline:none; box-shadow:var(--ring)}
+    label,input,button,textarea{font:inherit}
+
+    @media (max-width: 980px){
+      .searchbar{grid-template-columns: 1fr}
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="brand">
+    <i class="fa-solid fa-magnifying-glass-chart"></i>
+    <h2 style="margin:0">AIC 2025 · Video Retrieval Assistant</h2>
+  </div>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for m in messages %}
+        <div class="flash">{{ m }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <!-- SEARCH PANEL -->
+  <div class="panel">
+    <div class="searchbar">
+      <div class="search-left">
+        <i class="fa-solid fa-quote-left icon"></i>
+        <form id="text_form" method="post" action="{{ url_for('text_search') }}">
+          <textarea name="textquery" id="text_query" placeholder="Nhập mô tả sự kiện (vi/en)…">{{ data.query or '' }}</textarea>
+          <input type="hidden" name="is_qa" id="is_qa_hidden" value="{{ 'on' if data.is_qa else '' }}">
+          <input type="hidden" name="answer" id="answer_hidden" value="{{ data.answer or '' }}">
+          <input type="hidden" name="k" id="k_hidden" value="10">
+          <input type="hidden" name="query_type" id="query_type_hidden" value="{{ data.query_type or 'KIS' }}">
+        </form>
+      </div>
+
+      <div class="search-right">
+        <div class="row">
+          <div class="radio" id="radio_group">
+            <label><input type="radio" name="query_type_radio" value="KIS"  {% if data.query_type=='KIS' %}checked{% endif %}>KIS</label>
+            <label><input type="radio" name="query_type_radio" value="QA"   {% if data.query_type=='QA' %}checked{% endif %}>Q&A</label>
+            <label><input type="radio" name="query_type_radio" value="TRAKE"{% if data.query_type=='TRAKE' %}checked{% endif %}>TRAKE</label>
+          </div>
+          <label style="margin-left:auto; color:var(--muted)">Top-K:
+            <span class="k-field"><input id="top_k" type="number" value="10" min="1" max="200" aria-label="Top K"></span>
+          </label>
+          <button class="btn btn-primary" id="btn_text_search" aria-label="Tìm frame">
+            <i class="fa-solid fa-search"></i> <span id="search_label">Tìm frame</span>
+            <span class="spin" id="search_spin"></span>
+          </button>
+        </div>
+
+        <!-- Q&A Answer -->
+        <div id="qa_box" class="row" style="display:none">
+          <i class="fa-solid fa-circle-question" style="color:var(--accent)"></i>
+          <input id="answer_input" type="text" placeholder="Câu trả lời (nếu Q&A)…"
+                 style="flex:1; height:40px; border-radius:10px; border:1px solid rgba(255,255,255,.16);
+                        background:rgba(255,255,255,.06); color:#fff; padding:0 10px">
+          <label style="color:var(--muted)">
+            <input id="is_qa_checkbox" type="checkbox" {% if data.is_qa or data.query_type=='QA' %}checked{% endif %}>
+            Đây là câu hỏi Q&A
+          </label>
+        </div>
+
+        <!-- Tools -->
+        <div class="row" style="justify-content:flex-start">
+          <form id="upload_form" action="/uploadsearch" method="post" enctype="multipart/form-data" style="display:none">
+            <input type="file" name="image" id="upload_input" accept="image/*">
+            <input type="hidden" name="k" id="k_upload" value="10">
+          </form>
+          <button class="btn btn-outline" type="button" id="btn_upload"><i class="fa-regular fa-image"></i> Upload image</button>
+          <button class="btn btn-outline" type="button" id="btn_sketch"><i class="fa-solid fa-pen-nib"></i> Sketch</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sketch panel -->
+    <div id="sketch_panel">
+      <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap">
+        <canvas id="sketch" width="256" height="256"></canvas>
+        <div>
+          <div style="margin-bottom:10px; color:var(--muted)">Màu:</div>
+          <div style="display:flex; gap:8px; margin-bottom:14px">
+            <div class="swatch" style="background:#1e90ff" onclick="pick('#1e90ff')"></div>
+            <div class="swatch" style="background:#20c997" onclick="pick('#20c997')"></div>
+            <div class="swatch" style="background:#ffd43b" onclick="pick('#ffd43b')"></div>
+            <div class="swatch" style="background:#ef4444" onclick="pick('#ef4444')"></div>
+            <div class="swatch" style="background:#000000" onclick="pick('#000000')"></div>
+            <div class="swatch" style="background:#ffffff;border:1px solid #ccc" onclick="pick('#ffffff')"></div>
+          </div>
+          <form id="sketch_form" action="/sketchsearch" method="post" style="display:flex; gap:10px; flex-wrap:wrap">
+            <input type="hidden" name="sketch_data" id="sketch_data">
+            <input type="hidden" name="k" id="k_sketch" value="10">
+            <button class="btn btn-primary" type="button" id="btn_sketch_search"><i class="fa-solid fa-wang-magic-sparkles"></i> Search by sketch</button>
+            <button class="btn btn-outline" type="button" id="btn_sketch_clear">Clear</button>
+          </form>
+        </div>
+      </div>
+      <div style="height:8px"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS GRID -->
+  {% if data.pagefile and data.pagefile|length > 0 %}
+  <div class="panel" style="margin-top:16px">
+
+    {# KIS: cho phép multi-select, tránh form lồng nhau #}
+    {% if data.query_type=='KIS' %}
+    <form method="post" action="{{ url_for('finalize_multi') }}">
+      <input type="hidden" name="query_type" value="KIS">
+      <input type="hidden" name="textquery" value="{{ data.query or '' }}">
+
+      <div class="grid">
+        {% for it in data.pagefile %}
+        <div class="card">
+          <div class="thumb">
+            <img src="{{ url_for('get_img', fpath=it.imgpath) }}" alt="thumb" loading="lazy">
+          </div>
+          <div class="overlay"></div>
+          <div class="card-actions">
+            <label class="chip" title="Chọn ảnh này">
+              <input type="checkbox" name="imgids" value="{{ it.id }}"> chọn
+            </label>
+            <span class="chip">id={{it.id}}</span>
+            <span class="chip" title="{{it.imgpath}}">{{it.imgpath.split('/')[-2]}} / {{it.imgpath.split('/')[-1]}}</span>
+            <button class="btn btn-outline" type="button" onclick="go_img_search({{it.id}})">
+              <i class="fa-solid fa-bolt"></i> IR
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div style="padding: 0 16px 16px">
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-plus"></i> Add selected (KIS)</button>
+      </div>
+    </form>
+
+    {% else %}
+    <div class="grid">
+      {% for it in data.pagefile %}
+      <div class="card">
+        <div class="thumb">
+          <img src="{{ url_for('get_img', fpath=it.imgpath) }}" alt="thumb"
+               onclick="submitConfirm({{it.id}})" loading="lazy">
+        </div>
+        <div class="overlay"></div>
+        <div class="card-actions">
+          <span class="chip">id={{it.id}}</span>
+          <span class="chip" title="{{it.imgpath}}">{{it.imgpath.split('/')[-2]}} / {{it.imgpath.split('/')[-1]}}</span>
+          <button class="btn btn-outline" type="button" onclick="go_img_search({{it.id}})">
+            <i class="fa-solid fa-bolt"></i> IR
+          </button>
+          <form method="post" action="{{ url_for('confirm_select') }}" id="form_{{it.id}}" style="margin-left:auto">
+            <input type="hidden" name="imgid" value="{{it.id}}">
+            <input type="hidden" name="textquery" value="{{data.query or ''}}">
+            <input type="hidden" name="query_type" value="{{data.query_type or 'KIS'}}">
+            <input type="hidden" name="is_qa" value="{{ 'on' if data.is_qa else '' }}">
+            <input type="hidden" name="answer" value="{{data.answer or ''}}">
+            <button class="btn btn-primary" type="submit"><i class="fa-solid fa-check"></i> Chọn → Xác nhận</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+  <!-- RESULTS TABLE + EXPORT -->
+  <div class="panel" style="margin-top:16px; padding:16px">
+    <h3 style="margin:0 0 8px 0">Danh sách kết quả tạm</h3>
+    <table id="results_table">
+      <thead>
+      <tr>
+        <th style="width:52px"></th>
+        <th>QueryID</th><th>Video</th><th>Frame1</th><th>Answer</th><th>Frame2</th><th>Frame3</th><th>Frame4</th><th>Actions</th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for r in results %}
+        <tr draggable="true" data-rid="{{r.query_id}}">
+          <td class="drag-handle"><i class="fa-solid fa-grip-vertical"></i></td>
+          <td>{{r.query_id}}</td>
+          <td>{{r.video}}</td>
+          <td>{{r.frame}}</td>
+          <td>{{r.answer}}</td>
+          <td>{% if r.events and r.events|length>0 %}{{r.events[0]}}{% endif %}</td>
+          <td>{% if r.events and r.events|length>1 %}{{r.events[1]}}{% endif %}</td>
+          <td>{% if r.events and r.events|length>2 %}{{r.events[2]}}{% endif %}</td>
+          <td class="actions">
+            <form method="post" action="{{ url_for('delete_result', rid=r.rid) }}" onsubmit="return confirm('Xoá truy vấn #{{ r.query_id }}?')">
+              <button class="icon-btn danger" type="submit" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      {% if results|length == 0 %}
+        <tr><td colspan="9"><i>Chưa có kết quả.</i></td></tr>
+      {% endif %}
+      </tbody>
+    </table>
+
+    <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap">
+      <form action="{{ url_for('export_csv') }}" method="get">
+        <button class="btn btn-primary" id="btn_export" {{ 'disabled' if results|length == 0 else '' }}>
+          <i class="fa-regular fa-file-csv"></i> Xuất kết quả (CSV)
+        </button>
+      </form>
+      <form action="{{ url_for('clear_results') }}" method="post" onsubmit="return confirm('Xoá toàn bộ danh sách tạm?')">
+        <button class="btn btn-outline" id="btn_clear" {{ 'disabled' if results|length == 0 else '' }}>
+          <i class="fa-regular fa-trash-can"></i> Xoá danh sách
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ====== hydrate ======
+  var data = {{ data|tojson }};
+  if (data && Array.isArray(data.pagefile)) {
+    data.pagefile = data.pagefile.map(it => ({...it, imgpath:(it.imgpath||'').replace(/\\\\/g,'/')}));
+  }
+
+  // ====== helpers ======
+  function setQAVisibility(){
+    const type = document.querySelector('input[name="query_type_radio"]:checked')?.value || 'KIS';
+    const isQA = (type === 'QA') || document.getElementById('is_qa_checkbox')?.checked;
+    const qaBox = document.getElementById('qa_box');
+    if(qaBox) qaBox.style.display = isQA ? 'flex' : 'none';
+    document.getElementById('query_type_hidden').value = type;
+    document.getElementById('is_qa_hidden').value = isQA ? 'on' : '';
+  }
+  function setSearchLoading(on){
+    const btn=document.getElementById('btn_text_search'), sp=document.getElementById('search_spin'), lb=document.getElementById('search_label');
+    if(!btn) return; btn.disabled=!!on; if(sp) sp.style.display=on?'inline-block':'none'; if(lb) lb.textContent=on?'Đang tìm...':'Tìm frame';
+  }
+  function canSearch(){ return (document.getElementById('text_query')?.value||'').trim().length>0; }
+  function submitConfirm(id){ const f=document.getElementById('form_'+id); if(f) f.submit(); }
+  function go_img_search(id){ window.open("/imgsearch?imgid="+id, "_self"); }
+
+  // ====== sketch ======
+  let drawing=false, color='#1e90ff', last=null;
+  const cvs=document.getElementById('sketch'); const ctx=cvs?.getContext?cvs.getContext('2d'):null;
+  function pick(c){ color=c; }  function clearSketch(){ if(ctx&&cvs) ctx.clearRect(0,0,cvs.width,cvs.height); }
+  if(cvs && ctx){
+    cvs.onmousedown = (e)=>{drawing=true; last=[e.offsetX,e.offsetY];}
+    cvs.onmouseup   = ()=>{drawing=false; last=null;}
+    cvs.onmousemove = (e)=>{ if(!drawing) return; ctx.strokeStyle=color; ctx.lineWidth=18; ctx.lineCap='round';
+                             ctx.beginPath(); ctx.moveTo(last[0],last[1]); ctx.lineTo(e.offsetX,e.offsetY); ctx.stroke();
+                             last=[e.offsetX,e.offsetY]; }
+  }
+
+  // ====== events ======
+  document.querySelectorAll('input[name="query_type_radio"]').forEach(r=> r.addEventListener('change', setQAVisibility));
+  document.getElementById('btn_text_search')?.addEventListener('click', ()=>{
+    if(!canSearch()) { alert('Vui lòng nhập mô tả.'); return; }
+    document.getElementById('k_hidden').value      = document.getElementById('top_k').value || 10;
+    document.getElementById('answer_hidden').value = document.getElementById('answer_input')?.value || '';
+    setQAVisibility(); setSearchLoading(true); document.getElementById('text_form').submit();
+  });
+  // Enter to submit
+  const ta=document.getElementById('text_query');
+  if(ta){ ta.addEventListener('keydown',(e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('btn_text_search').click(); } }); }
+
+  // Upload
+  document.getElementById('btn_upload')?.addEventListener('click', ()=>{ document.getElementById('k_upload').value = document.getElementById('top_k').value || 10; document.getElementById('upload_input').click();});
+  $('#upload_input').on('change', function(){ if(this.files && this.files.length>0){ $('#upload_form').submit(); } });
+
+  // Sketch toggles
+  document.getElementById('btn_sketch')?.addEventListener('click', ()=>{ const p=document.getElementById('sketch_panel'); p.style.display=(p.style.display==='none'||p.style.display==='')?'block':'none';});
+  document.getElementById('btn_sketch_search')?.addEventListener('click', ()=>{ document.getElementById('k_sketch').value=document.getElementById('top_k').value||10; document.getElementById('sketch_data').value=cvs.toDataURL('image/png'); document.getElementById('sketch_form').submit();});
+  document.getElementById('btn_sketch_clear')?.addEventListener('click', clearSketch);
+
+  // ====== drag & drop reorder ======
+    const tbody = document.querySelector('#results_table tbody');
+  let dragRow = null;
+
+  function currentOrder() {
+    return Array.from(tbody.querySelectorAll('tr[draggable="true"]'))
+                .map(tr => parseInt(tr.dataset.rid));
+  }
+
+  if (tbody) {
+    tbody.addEventListener('dragstart', e => {
+      dragRow = e.target.closest('tr');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    tbody.addEventListener('dragover', e => {
+      e.preventDefault();
+      const tr = e.target.closest('tr');
+      if (!tr || tr === dragRow) return;
+      const rect = tr.getBoundingClientRect();
+      const after = (e.clientY - rect.top) > rect.height / 2;
+      tr.parentNode.insertBefore(dragRow, after ? tr.nextSibling : tr);
+    });
+    tbody.addEventListener('drop', async () => {
+      dragRow = null;
+      try {
+        const order = currentOrder();
+        await fetch('{{ url_for("reorder_results") }}', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({order})
+        });
+      } catch (_) {}
+    });
+  }
+
+  // init
+  (function init(){ setQAVisibility(); })();
+</script>
+</body>
+</html>
