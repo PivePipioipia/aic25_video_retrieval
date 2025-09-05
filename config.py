@@ -15,6 +15,12 @@ FAISS_INDEX_BIN  = os.path.join(os.getcwd(), "faiss_normal_ViT.bin")
 FEATURES_ALL_NPY = os.path.join(os.getcwd(), "features_all.npy")
 RESULTS_XLSX     = os.path.join(os.getcwd(), "results.xlsx")
 
+# Vocab cho Places365
+PLACES_VOCAB_FILE = os.path.join(DATASET_ROOT, "vocab", "categories_places365.txt")
+
+# Thư mục chứa các JSON kết quả Places
+PLACES_JSON_DIR = r"D:\AIC_DATA1_fromKG\places"
+
 # ========== FAISS SETTINGS ==========
 FAISS_INDEX_TYPE = os.getenv("FAISS_INDEX", "flat")
 FAISS_NLIST      = int(os.getenv("FAISS_NLIST", "4096"))

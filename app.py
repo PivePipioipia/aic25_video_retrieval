@@ -13,6 +13,28 @@ from utils.query_processing import Translation
 from utils.faiss import Myfaiss
 from utils.mapping import keyframe_to_video_frame
 from query.query_encoder import encode_long_query, extract_keywords, encode_hybrid
+from utils.place_utils import load_places_vocabulary, load_places_json, build_place_vocab_from_json
+
+try:
+    PLACES_VOCAB = load_places_vocabulary(config.PLACES_VOCAB_FILE)
+    PLACES_JSON  = load_places_json(config.PLACES_JSON_DIR)
+    VI2EN_PLACE  = build_place_vocab_from_json(PLACES_JSON)
+    print(f" Loaded {len(PLACES_VOCAB)} place labels, {len(PLACES_JSON)} JSON files, {len(VI2EN_PLACE)} vi→en mappings.")
+except Exception as e:
+    print("[WARN] Cannot load Places:", e)
+    PLACES_VOCAB, PLACES_JSON, VI2EN_PLACE = [], {}, {}
+
+def detect_place_in_query(query, vi2en_map):
+    """
+    Tìm place trong query (tiếng Việt).
+    Trả về (place_vi, place_en) nếu tìm thấy, ngược lại None.
+    """
+    q = query.lower()
+    for vi, en in vi2en_map.items():
+        if vi in q:  # nếu trong query có từ tiếng Việt
+            return vi, en
+    return None
+
 
 
 
@@ -66,6 +88,7 @@ device = "cuda" if getattr(config, "USE_GPU", False) else "cpu"
 bin_file = getattr(config, "FAISS_INDEX_BIN", "faiss_normal_ViT.bin")
 features_all_path = getattr(config, "FEATURES_ALL_NPY", "features_all.npy")
 MyFaiss = Myfaiss(bin_file, DictImagePath, device, Translation(), "ViT-B/32", features_path=features_all_path)
+
 
 ######## IN-MEMORY RESULTS ########
 # Mỗi phần tử:
@@ -152,10 +175,31 @@ def text_search():
     query_vec = query_vec.astype(np.float32)  # ép kiểu chuẩn cho FAISS
 
     # --- Search FAISS bằng vector đã encode ---
+    # --- Search FAISS bằng vector đã encode ---
     D, I, _, list_image_paths = MyFaiss.vector_search(query_vec, k=k)
     list_ids = I
 
     pagefile = [{'imgpath': p, 'id': int(i)} for p, i in zip(list_image_paths, list_ids)]
+
+    # 🔎 NEW: nếu query có chứa place → lọc kết quả theo PLACES_JSON
+    detected = detect_place_in_query(text_query, VI2EN_PLACE)
+    if detected:
+        place_vi, place_en = detected
+        print(f"[INFO] Query có place: {place_vi} → {place_en}, lọc kết quả FAISS...")
+        filtered = []
+        for it in pagefile:
+            video_id = it['imgpath'].split('/')[0]
+            frame_name = it['imgpath'].split('/')[-1]
+            frames = PLACES_JSON.get(video_id, [])
+            for f in frames:
+                if f['frame'] == frame_name and f['place_en'].lower() == place_en:
+                    filtered.append(it)
+                    break
+        if filtered:
+            pagefile = filtered
+
+
+
     imgperindex = 100
     data = {
         'num_page': max(1, math.ceil(len(pagefile)/imgperindex)),
@@ -166,6 +210,58 @@ def text_search():
         'answer': answer
     }
     _recompute_query_ids()
+    return render_template('home.html', data=data, results=RESULTS)
+
+@app.route('/placesearch', methods=['GET', 'POST'])
+def place_search():
+    if request.method == 'GET':
+        place_query = (request.args.get('placequery') or '').strip().lower()
+        k = int(request.args.get('k', 10))
+    else:
+        place_query = (request.form.get('placequery') or '').strip().lower()
+        try:
+            k = int(request.form.get('k', 10))
+        except:
+            k = 10
+
+    if not place_query:
+        flash("Vui lòng nhập place (ví dụ: museum, classroom...).")
+        return redirect(url_for('home'))
+
+    # Lọc trong vocab
+    matched_labels = [p for p in PLACES_VOCAB if place_query in p.lower()]
+    if not matched_labels:
+        flash(f"Không tìm thấy place nào khớp với: {place_query}")
+        return redirect(url_for('home'))
+
+    results = []
+    for video_id, frames in PLACES_JSON.items():
+        for frame in frames:
+            best_label = frame["place_en"].lower()
+            if any(lbl in best_label for lbl in matched_labels):
+                rel_path = f"{video_id}/{frame['frame']}"
+                results.append({
+                    "imgpath": rel_path,
+                    "id": len(results),
+                    "place": frame["place_en"],
+                    "confidence": frame["confidence"]
+                })
+
+    # Sắp xếp theo confidence
+    results = sorted(results, key=lambda x: -x["confidence"])[:k]
+
+    if not results:
+        flash("Không tìm thấy frame nào khớp với place query.")
+        return redirect(url_for('home'))
+
+    data = {
+        'num_page': 1,
+        'pagefile': results,
+        'query': f"[PLACE] {place_query}",
+        'query_type': 'PLACE',
+        'is_qa': False,
+        'answer': ''
+    }
     return render_template('home.html', data=data, results=RESULTS)
 
 @app.route('/confirm_select', methods=['POST'])

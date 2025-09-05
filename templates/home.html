@@ -126,6 +126,8 @@
             <label><input type="radio" name="query_type_radio" value="KIS"  {% if data.query_type=='KIS' %}checked{% endif %}>KIS</label>
             <label><input type="radio" name="query_type_radio" value="QA"   {% if data.query_type=='QA' %}checked{% endif %}>Q&A</label>
             <label><input type="radio" name="query_type_radio" value="TRAKE"{% if data.query_type=='TRAKE' %}checked{% endif %}>TRAKE</label>
+            <label><input type="radio" name="query_type_radio" value="PLACE" {% if data.query_type=='PLACE' %}checked{% endif %}>Place</label>
+
           </div>
           <label style="margin-left:auto; color:var(--muted)">Top-K:
             <span class="k-field"><input id="top_k" type="number" value="10" min="1" max="200" aria-label="Top K"></span>
@@ -135,6 +137,8 @@
             <span class="spin" id="search_spin"></span>
           </button>
         </div>
+
+
 
         <!-- Q&A Answer -->
         <div id="qa_box" class="row" style="display:none">
@@ -208,7 +212,15 @@
               <input type="checkbox" name="imgids" value="{{ it.id }}"> chọn
             </label>
             <span class="chip">id={{it.id}}</span>
-            <span class="chip" title="{{it.imgpath}}">{{it.imgpath.split('/')[-2]}} / {{it.imgpath.split('/')[-1]}}</span>
+<span class="chip" title="{{it.imgpath}}">
+  {{it.imgpath.split('/')[-2]}} / {{it.imgpath.split('/')[-1]}}
+</span>
+{% if it.place %}
+  <span class="chip" style="background:rgba(34,197,94,.15); border-color:rgba(34,197,94,.35)">
+    {{it.place}} ({{ '%.2f'|format(it.confidence) }})
+  </span>
+{% endif %}
+
             <button class="btn btn-outline" type="button" onclick="go_img_search({{it.id}})">
               <i class="fa-solid fa-bolt"></i> IR
             </button>
@@ -312,13 +324,21 @@
 
   // ====== helpers ======
   function setQAVisibility(){
-    const type = document.querySelector('input[name="query_type_radio"]:checked')?.value || 'KIS';
-    const isQA = (type === 'QA') || document.getElementById('is_qa_checkbox')?.checked;
-    const qaBox = document.getElementById('qa_box');
-    if(qaBox) qaBox.style.display = isQA ? 'flex' : 'none';
-    document.getElementById('query_type_hidden').value = type;
-    document.getElementById('is_qa_hidden').value = isQA ? 'on' : '';
-  }
+  const type = document.querySelector('input[name="query_type_radio"]:checked')?.value || 'KIS';
+  const isQA = (type === 'QA') || document.getElementById('is_qa_checkbox')?.checked;
+
+  // ẩn/hiện box Q&A
+  const qaBox = document.getElementById('qa_box');
+  if(qaBox) qaBox.style.display = isQA ? 'flex' : 'none';
+
+  // ẩn/hiện box Place
+  const placeBox = document.getElementById('place_box');
+  if(placeBox) placeBox.style.display = (type === 'PLACE') ? 'flex' : 'none';
+
+  document.getElementById('query_type_hidden').value = type;
+  document.getElementById('is_qa_hidden').value = isQA ? 'on' : '';
+}
+
   function setSearchLoading(on){
     const btn=document.getElementById('btn_text_search'), sp=document.getElementById('search_spin'), lb=document.getElementById('search_label');
     if(!btn) return; btn.disabled=!!on; if(sp) sp.style.display=on?'inline-block':'none'; if(lb) lb.textContent=on?'Đang tìm...':'Tìm frame';
