@@ -31,20 +31,15 @@ def detect_place_in_query(query, vi2en_map):
     """
     q = query.lower()
     for vi, en in vi2en_map.items():
-        if vi in q:  # nếu trong query có từ tiếng Việt
+        if vi in q:
             return vi, en
     return None
 
-
-
-
-# Q&A suggest (tùy chọn, nặng)
 try:
     from qa_modules import suggest_answer_bundle  # return {'ocr':..., 'count':..., 'caption':..., 'hints':[...] }
 except Exception:
     suggest_answer_bundle = None
 
-# TRAKE alignment (tùy chọn)
 try:
     from trake_module import align_events
 except Exception:
@@ -60,7 +55,7 @@ app = Flask(
 )
 app.secret_key = "aic2025-secret"
 
-######## LOAD IMAGE MAP từ map_idx_clean ########
+
 from pathlib import Path
 
 DictImagePath = {}
@@ -72,7 +67,6 @@ for map_file in sorted(maps_dir.glob("map_*.json")):
     with open(map_file, "r", encoding="utf-8") as f:
         raw = json.load(f)
 
-    # sort theo frame id
     items = sorted(raw.items(), key=lambda kv: int(kv[1]))
     for fname, frame_idx in items:
         rel_path = f"{video_id}/{fname}"
@@ -83,7 +77,6 @@ LenDictPath = len(DictImagePath)
 print(f" Loaded {LenDictPath} images from {len(list(maps_dir.glob('map_*.json')))} map files.")
 
 
-######## FAISS ########
 device = "cuda" if getattr(config, "USE_GPU", False) else "cpu"
 bin_file = getattr(config, "FAISS_INDEX_BIN", "faiss_normal_ViT.bin")
 features_all_path = getattr(config, "FEATURES_ALL_NPY", "features_all.npy")
@@ -102,7 +95,6 @@ MyFaiss = Myfaiss(bin_file, DictImagePath, device, Translation(), "ViT-B/32", fe
 RESULTS = []
 RID_COUNTER = 1  # chỉ tăng
 
-# Query grouping: all selections from the same text query share one query_id
 CURRENT_QUERY_TEXT = ""
 CURRENT_QUERY_ID = 0
 NEXT_QUERY_ID = 1
@@ -154,34 +146,28 @@ def text_search():
         flash("Vui lòng nhập mô tả truy vấn.")
         return redirect(url_for('home'))
 
-    # Gán/giữ query_id theo text_query
     global CURRENT_QUERY_TEXT, CURRENT_QUERY_ID, NEXT_QUERY_ID
     if text_query != CURRENT_QUERY_TEXT:
         CURRENT_QUERY_TEXT = text_query
         CURRENT_QUERY_ID = NEXT_QUERY_ID
         NEXT_QUERY_ID += 1
 
-    # --- Xử lý query bằng query_encoder ---
     query_vec = encode_long_query(text_query, MyFaiss.model, device)
 
     if query_vec is None:
         flash("Không thể encode query, vui lòng nhập lại mô tả ngắn gọn hơn.")
         return redirect(url_for('home'))
 
-    #  Thêm log debug
     print("🔎 Query vector shape:", query_vec.shape)
     print("🔎 Query vector norm:", np.linalg.norm(query_vec))
 
     query_vec = query_vec.astype(np.float32)  # ép kiểu chuẩn cho FAISS
 
-    # --- Search FAISS bằng vector đã encode ---
-    # --- Search FAISS bằng vector đã encode ---
     D, I, _, list_image_paths = MyFaiss.vector_search(query_vec, k=k)
     list_ids = I
 
     pagefile = [{'imgpath': p, 'id': int(i)} for p, i in zip(list_image_paths, list_ids)]
 
-    # 🔎 NEW: nếu query có chứa place → lọc kết quả theo PLACES_JSON
     detected = detect_place_in_query(text_query, VI2EN_PLACE)
     if detected:
         place_vi, place_en = detected
@@ -247,7 +233,6 @@ def place_search():
                     "confidence": frame["confidence"]
                 })
 
-    # Sắp xếp theo confidence
     results = sorted(results, key=lambda x: -x["confidence"])[:k]
 
     if not results:
@@ -294,7 +279,6 @@ def confirm_select():
         'answer': answer
     }
 
-    # Gợi ý Q&A (tắt mặc định để không bị chậm)
     qa_enabled = getattr(config, "QA_SUGGEST_ENABLED", False)
     qa_suggest = {}
     if is_qa and qa_enabled and suggest_answer_bundle:
@@ -325,7 +309,6 @@ def finalize_select():
         'events': []
     }
 
-    # TRAKE (tuỳ chọn)
     if query_type == 'TRAKE' and align_events:
         try:
             # Force DTW when user selects TRAKE; if data missing, module will fallback internally
@@ -422,7 +405,6 @@ def export_csv():
             frames = [str(r['frame'])] + [str(f) for f in r.get('events', [])]
             rows.append(f"{video}," + ",".join(frames))
 
-    # Ghép thành text CSV
     csv_content = "\n".join(rows)
 
     buffer = io.BytesIO()
@@ -473,9 +455,6 @@ def reorder_results():
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 400
 
-##############################################
-# Legacy routes giữ nguyên
-##############################################
 @app.route('/imgsearch')
 def image_search():
     pagefile = []
@@ -522,13 +501,11 @@ def sketch_search():
 def get_img():
     fpath_in = (request.args.get('fpath') or "").replace("\\", "/").strip()
 
-    # Nếu fpath_in là số id (ví dụ imgid=1234) -> tra từ DictImagePath
     if fpath_in.isdigit():
         rel_path = DictImagePath.get(int(fpath_in), "")
     else:
         rel_path = fpath_in
 
-    # build absolute path từ rel_path
     abs_path = os.path.join(config.KEYFRAMES_DIR, rel_path)
 
     if os.path.exists(abs_path):

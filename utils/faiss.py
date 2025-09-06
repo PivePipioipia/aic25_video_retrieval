@@ -20,7 +20,6 @@ class Myfaiss:
             self.features = np.load(features_path).astype(np.float32)
 
     def _search(self, query_feats, k):
-        # Normalize để so xấp xỉ cosine
         faiss.normalize_L2(query_feats)
         scores, idx_image = self.index.search(query_feats, k=k)
         idx_image = idx_image.flatten()
@@ -41,7 +40,6 @@ class Myfaiss:
         return self._search(feats, k)
 
     def text_search(self, text, k):
-        # giữ nguyên behavior cũ
         if detect(text) == 'vi':
             text = self.translater(text)
         text_tok = clip.tokenize([text]).to(self.device)

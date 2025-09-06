@@ -32,14 +32,12 @@ def _load_scenes(folder: str) -> List[dict]:
 def _collect_image_paths_for_scene(folder: str, scene: dict, rel_all: List[str]) -> List[str]:
     start = int(scene.get("start", 0))
     end = int(scene.get("end", 0))
-    # pick frames that belong to folder and whose index is in [start, end]
     abs_list: List[str] = []
     key_root = Path(config.KEYFRAMES_DIR)
     for rp in rel_all:
         rp_str = str(rp).replace("\\", "/")
         if not rp_str.startswith(folder + "/"):
             continue
-        # rp like 'L21_V001/0045.jpg' → index 45
         name = Path(rp_str).name
         num = "".join([c for c in Path(name).stem if c.isdigit()])
         try:
@@ -49,7 +47,6 @@ def _collect_image_paths_for_scene(folder: str, scene: dict, rel_all: List[str])
         if idx < start or idx > end:
             continue
         abs_list.append(str(key_root / rp_str))
-    # sort by frame index inferred from filename
     abs_list.sort(key=lambda p: int("".join([c for c in Path(p).stem if c.isdigit()]) or 0))
     return abs_list
 

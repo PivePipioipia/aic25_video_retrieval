@@ -1,4 +1,3 @@
-
 import os, json, re
 from pathlib import Path
 import numpy as np
@@ -34,13 +33,13 @@ def main():
     if not clip_dir.exists():
         raise SystemExit(f"CLIP_DIR không tồn tại: {clip_dir}")
 
-    # nhóm theo video để load .npy theo từng video
+
     groups = {}
     for gid, rp in enumerate(rel_paths):
         vid, idx = parse_relpath(rp)
         groups.setdefault(vid, []).append((gid, idx))
 
-    # lấy dimension từ 1 file npy đầu tiên
+
     any_vid = next(iter(groups.keys()))
     sample = np.load(clip_dir / f"{any_vid}.npy", mmap_mode="r")
     d = sample.shape[1]
@@ -56,12 +55,11 @@ def main():
                 raise IndexError(f"Frame {idx+1} vượt quá số vector trong {npy_path} (shape {feats.shape})")
             out[gid] = feats[idx]
 
-    # Chuẩn hoá L2 để dùng Inner-Product ~ cosine
+
     faiss.normalize_L2(out)
     np.save(config.FEATURES_ALL_NPY, out)
-    print(f"✅ Saved features to {config.FEATURES_ALL_NPY} with shape {out.shape}")
+    print(f" Saved features to {config.FEATURES_ALL_NPY} with shape {out.shape}")
 
-    # Build FAISS
     d = out.shape[1]
     if config.FAISS_INDEX_TYPE.lower() == "ivf":
         nlist = config.FAISS_NLIST
@@ -75,7 +73,7 @@ def main():
         index.add(out)
 
     faiss.write_index(index, config.FAISS_INDEX_BIN)
-    print(f"✅ Saved FAISS index to {config.FAISS_INDEX_BIN}")
+    print(f" Saved FAISS index to {config.FAISS_INDEX_BIN}")
 
 if __name__ == "__main__":
     main()

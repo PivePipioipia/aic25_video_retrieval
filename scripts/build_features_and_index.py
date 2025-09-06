@@ -1,4 +1,3 @@
-# scripts/build_features_and_index.py
 import os
 import json
 import numpy as np
